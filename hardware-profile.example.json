@@ -1,0 +1,30 @@
+{
+  "profile": "unverified-existing-esp32-s3",
+  "hardwareVerification": "required-before-deployment",
+  "board": "esp32-s3-devkitc-1",
+  "macIdentity": "Wi-Fi station MAC from WiFi.macAddress()",
+  "audio": {
+    "microphone": { "encoding": "pcm_s16le", "channels": 1, "sampleRate": 16000 },
+    "serverToDevice": { "encoding": "opus", "channels": 1, "encodedSampleRate": 24000, "frameDurationMs": 120 },
+    "speakerI2s": { "sampleRate": 48000, "note": "Existing firmware output rate; verify the decoder path on hardware." }
+  },
+  "display": {
+    "controller": null,
+    "width": null,
+    "height": null,
+    "i2cAddress": null,
+    "sdaPin": null,
+    "sclPin": null,
+    "status": "setup_required",
+    "pairingCodeRenderer": "ManagementProtocol::Hooks::displayCode"
+  },
+  "identity": {
+    "bootstrap": "unique operator-provisioned 32+ character random secret per device",
+    "storage": "NVS namespace robot-mgmt; enable NVS encryption/secure boot for deployment",
+    "sharedFleetSecretAllowed": false
+  },
+  "capabilities": ["pcm16_input", "opus_output", "playback_ack"],
+  "optionalManagementFeature": "ELATO_MANAGEMENT",
+  "batteryTelemetry": "unavailable",
+  "acousticEchoCancellation": "unavailable"
+}
