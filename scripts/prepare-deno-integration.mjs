@@ -3,37 +3,27 @@
 import { readFile, writeFile, mkdir, copyFile } from "node:fs/promises";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { patchVoiceMain, patchCompanionSource } from "./companion-files.mjs";
 const panel = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-if (!process.argv[2]) {
-  throw new Error("Pass the path to your existing Elato Deno main.ts: node scripts/prepare-deno-integration.mjs /path/to/ElatoAI/server/deno/main.ts");
-}
-const source = resolve(process.argv[2]);
+const source = process.argv[2]
+  ? resolve(process.argv[2])
+  : resolve(panel, "../../server/deno/main.ts");
 const output = resolve(panel, "integration/prepared");
-let content = await readFile(source, "utf8");
-if (content.includes("createManagedVoiceUpgrade"))
-  throw new Error(
-    "Source already contains a managed hook; inspect it before applying again.",
-  );
-const marker = "server.on('upgrade', async (req, socket, head) => {";
-if (content.split(marker).length !== 2)
-  throw new Error("Expected one existing upgrade handler. No files modified.");
-content =
-  "import { createManagedVoiceUpgrade } from './management/managed-voice.ts';\nimport { createOpusPacketizer } from './utils.ts';\n" +
-  content;
-content = content.replace(
-  marker,
-  "const tryManagedUpgrade = createManagedVoiceUpgrade({ createOpusPacketizer });\n\n" +
-    marker +
-    "\n    if (await tryManagedUpgrade(req, socket, head)) return;",
-);
-// Existing debug statement prints the Authorization header. Remove it in the prepared copy.
-content = content.replace(
-  /^[ \t]*console\.log\('foobar upgrade', req\.headers\);\r?\n/m,
-  "",
-);
+const content = patchVoiceMain(await readFile(source, "utf8"));
+const compat = JSON.parse(await readFile(resolve(panel, "integration/deno/companion-compat.json"), "utf8"));
+const compatibilityFiles = [];
+for (const name of new Set(compat.map((rule) => rule.path))) {
+  if (!["types.d.ts", "deno.json", "models/gemini.ts", "models/elevenlabs.ts"].includes(name))
+    throw new Error("Invalid companion compatibility path. No files modified.");
+  compatibilityFiles.push([name, patchCompanionSource(name, await readFile(resolve(dirname(source), name), "utf8"), compat)]);
+}
 await mkdir(resolve(output, "management"), { recursive: true });
 await writeFile(resolve(output, "main.ts"), content);
-for (const name of ["core.mjs", "managed-voice.ts"])
+for (const [name, body] of compatibilityFiles) {
+  await mkdir(dirname(resolve(output, name)), { recursive: true });
+  await writeFile(resolve(output, name), body);
+}
+for (const name of ["core.mjs", "managed-voice.ts", "managed-groq.mjs", "groq-speech.mjs", ".env.example"])
   await copyFile(
     resolve(panel, "integration/deno", name),
     resolve(output, "management", name),

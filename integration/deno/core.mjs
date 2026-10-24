@@ -112,6 +112,22 @@ export class Pcm16Resampler {
   }
 }
 
+/** Keep complete little-endian samples without changing the rate or dropping a split sample. */
+export class Pcm16Frames {
+  constructor() { this.pendingByte = null; }
+  push(bytes) {
+    if (!bytes.length) return new Uint8Array();
+    const prefix = this.pendingByte === null ? 0 : 1;
+    const length = bytes.length + prefix;
+    const complete = length - length % 2;
+    const output = new Uint8Array(complete);
+    if (prefix && complete) output[0] = this.pendingByte;
+    output.set(bytes.subarray(0, complete - prefix), prefix);
+    this.pendingByte = length % 2 ? bytes[bytes.length - 1] : null;
+    return output;
+  }
+}
+
 /** Invalidate already queued callbacks when a generation is interrupted. */
 export class GenerationGate {
   constructor() { this.id = 0; this.closed = false; }

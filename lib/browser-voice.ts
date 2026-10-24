@@ -4,6 +4,7 @@ import type { Actor } from "./domain";
 import { getService } from "./server/service";
 import { AppError } from "./server/errors";
 import { realtimeTranscriptEvent, realtimeUsageEvent } from "./voice-events";
+import { aiProvider } from "./server/ai-provider";
 
 interface ActiveCall {
   actor: Actor;
@@ -50,6 +51,12 @@ export async function startBrowserVoice(
   input: Record<string, unknown>,
   requestSignal?: AbortSignal,
 ) {
+  if (aiProvider() !== "openai")
+    throw new AppError(
+      "UNSUPPORTED_TRANSPORT",
+      "Use the Qwen push-to-talk voice test for this provider.",
+      409,
+    );
   if (process.env.APP_MODE === "demo")
     throw new AppError(
       "DEMO_DISABLED",

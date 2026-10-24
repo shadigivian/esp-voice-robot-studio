@@ -6,10 +6,18 @@ export function realtimeUsageEvent(event: any) {
   const values = {
     input_tokens: current.input_tokens,
     output_tokens: current.output_tokens,
-    input_audio_tokens: current.input_token_details?.audio_tokens,
-    output_audio_tokens: current.output_token_details?.audio_tokens,
-    input_text_tokens: current.input_token_details?.text_tokens,
-    output_text_tokens: current.output_token_details?.text_tokens,
+    input_audio_tokens: (
+      current.input_token_details ?? current.input_tokens_details
+    )?.audio_tokens,
+    output_audio_tokens: (
+      current.output_token_details ?? current.output_tokens_details
+    )?.audio_tokens,
+    input_text_tokens: (
+      current.input_token_details ?? current.input_tokens_details
+    )?.text_tokens,
+    output_text_tokens: (
+      current.output_token_details ?? current.output_tokens_details
+    )?.text_tokens,
   };
   const usage = Object.fromEntries(
     Object.entries(values).filter(
@@ -34,6 +42,7 @@ export function realtimeTranscriptEvent(event: any) {
     ![
       "conversation.item.input_audio_transcription.completed",
       "response.output_audio_transcript.done",
+      "response.audio_transcript.done",
     ].includes(event.type) ||
     typeof event.transcript !== "string"
   )

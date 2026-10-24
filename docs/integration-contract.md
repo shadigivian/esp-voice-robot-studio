@@ -1,6 +1,38 @@
 # Optional external voice server integration
 
-This repository includes an adapter for a separately installed compatible ElatoAI Deno voice server. It does not include the full voice server or firmware, and the local demo does not require either. The original integration was reviewed against the server under `server/deno` in the ElatoAI companion checkout. Its `main.ts` owns one HTTP/WebSocket listener, authenticates legacy user JWTs through `utils.ts` / Supabase, then chooses a provider. Its `models/openai-live.ts` uses the separate Live API, `session.start`, 24 kHz PCM and Responses delegation. The managed integration is additive; legacy provider/authentication paths are preserved. Check compatibility with the actual server revision before applying a generated patch.
+## Groq Persian speech
+
+With `AI_PROVIDER=groq`, the managed adapter detects bounded PCM16 16 kHz turns,
+transcribes Persian through Groq Whisper, calls the configured Qwen chat model
+with session-bound tools, and synthesizes through the authenticated local Piper
+bridge. It sends `AUDIO.COMMITTED` before inference, then paces 24 kHz PCM into
+the existing Opus packetizer. Playback acknowledgements, cancellation and source
+revocation use the same device contract. Partial or interrupted inference keeps
+session usage unconfirmed. See [Groq setup](groq-setup.fa.md).
+
+## Qwen cloud
+
+Set `AI_PROVIDER=qwen` on the panel and this adapter, then configure
+`DASHSCOPE_API_KEY`, `DASHSCOPE_WORKSPACE_ID`, `DASHSCOPE_REGION`,
+`QWEN_REALTIME_MODEL` and the default `QWEN_VOICE`. See the
+[Persian setup guide](qwen-setup.fa.md) and `integration/deno/.env.example`.
+The Qwen branch waits for `session.created` and `session.updated`, sends raw
+16 kHz PCM through `input_audio_buffer.append`, and packetizes the provider's
+24 kHz PCM audio as Opus. Native Qwen tool schemas and `response.done` events
+are mapped explicitly; input remains muted until firmware playback ACK.
+Interruptions discard old upstream generations. Usage comes from provider
+completion events; transcript persistence remains opt-in. Local transcript
+settings do not assert a provider-side retention guarantee.
+
+`scripts/install-companion.mjs PATH_TO_ELATOAI` previews a source-only update;
+add `--write` to back up changed originals and install into the existing listener.
+Add `--firmware` to install the included companion source as well. The older
+preparation helper still generates reviewable files without installing. An
+already recognized hook can be updated idempotently. No private `.env` is changed.
+
+The OpenAI-specific examples below apply when `AI_PROVIDER=openai`.
+
+This repository includes an adapter for a separately installed compatible ElatoAI Deno voice server. It includes companion firmware source, but not the full voice server, and the local demo does not require either. The original integration was reviewed against the server under `server/deno` in the ElatoAI companion checkout. Its `main.ts` owns one HTTP/WebSocket listener, authenticates legacy user JWTs through `utils.ts` / Supabase, then chooses a provider. Its `models/openai-live.ts` uses the separate Live API, `session.start`, 24 kHz PCM and Responses delegation. The managed integration is additive; legacy provider/authentication paths are preserved. Check compatibility with the actual server revision before applying a generated patch.
 
 The existing `utils.ts` `createOpusPacketizer` creates a per-connection 24 kHz mono encoder with 120 ms frames. Firmware sends 16 kHz mono PCM16 and decodes binary Opus. This is an application transport contract, independent of the provider's websocket schema.
 
@@ -14,7 +46,7 @@ node scripts/prepare-deno-integration.mjs /path/to/ElatoAI/server/deno/main.ts
 
 PowerShell also accepts a quoted Windows path, such as `"D:\projects\ElatoAI\server\deno\main.ts"`.
 
-The command writes **only** `integration/prepared/main.ts`, `integration/prepared/management/` and the accompanying license inside this repository. It verifies the expected upgrade-handler marker and refuses a duplicate hook. Review the generated diff against the existing server. Install that reviewed main.ts plus the management directory on the existing Deno server through the normal release process; do not start another voice listener. External source files and production are not modified automatically. The prepared main.ts still relies on the external server's other modules; it is not a complete standalone server.
+The command writes a reviewable copy under `integration/prepared/`: main.ts, management/, license, and the narrow compatible types/config/model patches used by native Deno validation. It verifies the expected source shapes and updates an already recognized hook without duplicating it. Review all generated changed files against the existing server. Install those reviewed files through the normal release process, or use the explicit companion installer; do not start another voice listener. External files are not modified by the preparation command.
 
 The generated patch imports `createManagedVoiceUpgrade`, passes the existing `createOpusPacketizer`, and adds `if (await tryManagedUpgrade(req,socket,head)) return;` at the start of the current upgrade handler. `/managed-voice` uses managed device tokens. All other paths continue through legacy JWT/Supabase authentication. The prepared copy also removes the existing `console.log('foobar upgrade', req.headers)` statement, which would otherwise log bearer credentials.
 

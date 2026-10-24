@@ -34,3 +34,16 @@ jobs:
       - run: npx playwright install --with-deps chrome
       - run: npm run test:ui
       - run: npm run build
+
+  speech-bridge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Test local speech bridge with a synthetic voice
+        run: |
+          python3 -m venv .local/speech-tests
+          .local/speech-tests/bin/python -m pip install numpy==2.4.6
+          .local/speech-tests/bin/python scripts/test_speech_bridge.py

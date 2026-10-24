@@ -35,6 +35,16 @@ Login uses your existing email/password Auth account. Provision initial accounts
 
 ## Provider and knowledge
 
+For a Groq API key, use `AI_PROVIDER=groq` on both servers and follow the
+[Persian Groq guide](groq-setup.fa.md). This path combines Groq Whisper and Qwen
+text with a separately running local Piper speech bridge.
+
+For the Qwen cloud path, follow [the Persian Qwen guide](qwen-setup.fa.md).
+`AI_PROVIDER=qwen` selects DashScope text and realtime voice plus scoped local
+keyword retrieval; no OpenAI key is required in that mode. Set the same provider
+on the panel and managed Deno server. The OpenAI configuration below remains
+available when `AI_PROVIDER=openai`.
+
 Set `OPENAI_API_KEY`, an explicitly accessible `OPENAI_TEXT_MODEL` and `OPENAI_REALTIME_MODEL`, plus a supported `OPENAI_VOICE`. Optional `OPENAI_TRANSCRIPTION_MODEL` enables user audio transcription, and `OPENAI_TTS_MODEL` enables the explicitly requested character voice sample. Samples use the saved draft greeting/voice and are never requested automatically. The Integrations button tests model visibility; it does not prove a working microphone or live session. Model visibility and actual voice access can differ. Do not guess model access or paste keys into the browser.
 
 ```sh
@@ -64,6 +74,13 @@ In the companion firmware, management support is opt-in through `ELATO_MANAGEMEN
 The simulator uses `MANAGEMENT_BASE_URL`, `SIMULATOR_MAC`, `DEVICE_BOOTSTRAP_SECRET` and optionally `DEVICE_CLAIM_ID`; `npm run simulator` connects to the actual management API. Enter its temporary simulated-screen code in the panel. A simulator cannot establish microphone, speaker or OLED correctness. `--voice` is an explicit live provider test and may cost money.
 
 ## Browser voice
+
+In Qwen mode the authenticated browser uses bounded push-to-talk requests:
+up to 15 seconds of PCM16/16kHz, server-owned tool execution, and a WAV reply.
+Each recording is an independent session. The master key stays server-side;
+the same authorization, knowledge revision and transcript rules apply. Qwen
+samples use the realtime model and saved greeting. The following WebRTC flow
+applies to OpenAI mode.
 
 Browser voice starts only after a deliberate click. The panel requests a microphone, exchanges SDP through its own authenticated `/api/voice`, and establishes a WebRTC media session. The master API key and provider call ID remain on the server. Server sideband control dispatches the same scoped knowledge tools/context used by ESP and text tests. User transcription is available only if the transcription model is configured; assistant audio transcripts are transient unless content storage is opted in.
 

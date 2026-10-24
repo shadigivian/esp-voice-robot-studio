@@ -182,6 +182,12 @@ export interface Integrations {
   database: string;
   auth: string;
   openai: string;
+  provider: "openai" | "qwen" | "groq";
+  ai: string;
+  textModel: string | null;
+  browserVoice: "webrtc" | "push_to_talk";
+  voiceSamples: boolean;
+  knowledge: string;
   voiceServer: string;
   model: string | null;
   voiceEndpoint: string | null;
