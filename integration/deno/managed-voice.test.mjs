@@ -25,7 +25,9 @@ async function qwenFixture(t, settings = {}) {
   await mkdir(directory, { recursive: true });
   const source = await readFile(new URL('./managed-voice.ts', import.meta.url), 'utf8');
   const built = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext } }).outputText
-    .replaceAll("'npm:ws'", "'ws'").replace("'./core.mjs'", "'../../integration/deno/core.mjs'");
+    .replaceAll("'npm:ws'", "'ws'").replace("'./core.mjs'", "'../../integration/deno/core.mjs'")
+    .replace("'./managed-groq.mjs'", "'../../integration/deno/managed-groq.mjs'")
+    .replace("'./groq-speech.mjs'", "'../../integration/deno/groq-speech.mjs'");
   const compiled = new URL(`qwen-voice-${process.pid}-${++fixtureNumber}.mjs`, directory); await writeFile(compiled, built);
   const previousDeno = globalThis.Deno;
   const env = { MANAGEMENT_ALLOW_LOCAL_HTTP: 'true', AI_PROVIDER: 'qwen', DASHSCOPE_API_KEY: 'fixture-qwen-key',
@@ -219,12 +221,79 @@ test('Qwen greets once after configuration and survives repeated touch interrupt
   await waitUntil(() => f.device.readyState === WebSocket.CLOSED);
 });
 
+test('Groq managed route uses bounded PCM turns, retains playback ACK gating, private tools and source revocation', async (t) => {
+  const requests = []; let speech = 0;
+  const f = await qwenFixture(t, {
+    env: { AI_PROVIDER: 'groq', GROQ_API_KEY: 'fixture-groq-key', GROQ_TTS_URL: 'http://127.0.0.1:8765/speech', SPEECH_BRIDGE_TOKEN: 'fixture-tts-token' },
+    options: {
+      detectorOptions: { threshold: 100, maxMs: 100, minMs: 100 },
+      fetchProvider: async (url, init) => {
+        requests.push({ url, init });
+        if (url.endsWith('/transcriptions')) return Response.json({ text: 'سلام' });
+        if (url.endsWith('/completions')) return Response.json({ choices: [{ message: { role: 'assistant', content: 'سلام دوست من' } }], usage: { prompt_tokens: 3, completion_tokens: 4 } });
+        speech++; return new Response(Buffer.from([1, 2, 3, 4]), { headers: { 'content-type': 'audio/pcm', 'x-audio-sample-rate': '24000' } });
+      },
+    },
+  });
+  await waitUntil(() => f.controls.some((value) => value.type === 'auth'));
+  assert.equal(f.providers.length, 0, 'Groq must never open an unsupported realtime socket');
+  const voice = Buffer.alloc(3200); for (let i = 0; i < voice.length; i += 2) voice.writeInt16LE(2000, i);
+  f.device.send(voice);
+  await waitUntil(() => f.controls.some((value) => value.msg === 'RESPONSE.COMPLETE' && value.playback_id));
+  const playback = f.controls.find((value) => value.msg === 'RESPONSE.COMPLETE' && value.playback_id).playback_id;
+  const committed = f.controls.findIndex((value) => value.msg === 'AUDIO.COMMITTED');
+  assert.ok(committed >= 0 && committed < f.controls.findIndex((value) => value.msg === 'RESPONSE.CREATED'), 'accepted Groq input must put firmware in PROCESSING before speech starts');
+  assert.equal(speech, 1); assert.deepEqual(Buffer.concat(f.pcm), Buffer.from([1, 2, 3, 4]));
+  f.device.send(voice); f.instruction('PLAYBACK.COMPLETE', { playback_id: playback + 1 }); f.device.send(voice);
+  await new Promise((resolve) => setTimeout(resolve, 50)); assert.equal(speech, 1);
+  f.instruction('PLAYBACK.COMPLETE', { playback_id: playback }); f.device.send(voice);
+  await waitUntil(() => speech === 2);
+  await waitUntil(() => f.controls.some((value) => value.msg === 'RESPONSE.COMPLETE' && value.playback_id === playback + 1));
+  assert.equal(f.requests.some((value) => value.event?.type === 'message'), false, 'transcripts remain opt-in');
+  assert.equal(requests.filter(({ url }) => url.endsWith('/transcriptions')).length, 2);
+  f.revoke(); await waitUntil(() => f.device.readyState === WebSocket.CLOSED);
+  assert.ok(f.controls.some((value) => value.msg === 'AUDIO.CLEAR'));
+  await waitUntil(() => f.requests.some((value) => value.action === 'end_session'));
+  assert.equal(f.requests.find((value) => value.action === 'end_session').usageConfirmed, true, 'completed inference keeps usage confirmed when later authorization changes');
+});
+
+test('Groq touch interruption drops stale speech and retains uncertain usage after a subsequent successful turn', async (t) => {
+  let releaseSpeech, requested = false, speechCalls = 0;
+  const f = await qwenFixture(t, {
+    env: { AI_PROVIDER: 'groq', GROQ_API_KEY: 'fixture-groq-key', GROQ_TTS_URL: 'http://127.0.0.1:8765/speech', SPEECH_BRIDGE_TOKEN: 'fixture-tts-token' },
+    options: {
+      detectorOptions: { threshold: 100, maxMs: 100 },
+      fetchProvider: async (url) => {
+        if (url.endsWith('/transcriptions')) return Response.json({ text: 'سلام' });
+        if (url.endsWith('/completions')) return Response.json({ choices: [{ message: { role: 'assistant', content: 'پاسخ قبلی' } }] });
+        requested = true;
+        if (speechCalls++ === 0) await new Promise((resolve) => { releaseSpeech = resolve; });
+        return new Response(Buffer.from([1, 2]), { headers: { 'content-type': 'audio/pcm', 'x-audio-sample-rate': '24000' } });
+      },
+    },
+  });
+  await waitUntil(() => f.controls.some((value) => value.type === 'auth'));
+  const voice = Buffer.alloc(3200); for (let i = 0; i < voice.length; i += 2) voice.writeInt16LE(2000, i);
+  f.device.send(voice); await waitUntil(() => requested);
+  f.instruction('INTERRUPT'); await waitUntil(() => f.controls.some((value) => value.msg === 'AUDIO.CLEAR'));
+  releaseSpeech(); await new Promise((resolve) => setTimeout(resolve, 50));
+  assert.equal(f.packets.length, 0); assert.equal(f.device.readyState, WebSocket.OPEN);
+  f.device.send(voice);
+  await waitUntil(() => f.controls.some((value) => value.msg === 'RESPONSE.COMPLETE' && value.playback_id));
+  assert.equal(f.packets.length, 1, 'only the subsequent completed generation can send audio');
+  f.instruction('END_SESSION');
+  await waitUntil(() => f.requests.some((value) => value.action === 'end_session'));
+  assert.equal(f.requests.find((value) => value.action === 'end_session').usageConfirmed, false, 'later successful inference cannot confirm usage from the interrupted request');
+});
+
 test('actual managed WebSocket route rejects browser and missing tokens, drops interrupted generation, closes on source revocation', async () => {
   const directory = new URL('../../.local/adapter-test/', import.meta.url);
   await mkdir(directory, { recursive: true });
   const source = await readFile(new URL('./managed-voice.ts', import.meta.url), 'utf8');
   const built = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext } }).outputText
-    .replaceAll("'npm:ws'", "'ws'").replace("'./core.mjs'", "'../../integration/deno/core.mjs'");
+    .replaceAll("'npm:ws'", "'ws'").replace("'./core.mjs'", "'../../integration/deno/core.mjs'")
+    .replace("'./managed-groq.mjs'", "'../../integration/deno/managed-groq.mjs'")
+    .replace("'./groq-speech.mjs'", "'../../integration/deno/groq-speech.mjs'");
   const compiled = new URL(`managed-voice-${process.pid}.mjs`, directory); await writeFile(compiled, built);
   const previousDeno = globalThis.Deno;
   globalThis.Deno = { env: { get: (name) => name === 'MANAGEMENT_ALLOW_LOCAL_HTTP' ? 'true' : undefined } };

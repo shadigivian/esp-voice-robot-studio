@@ -1,5 +1,9 @@
 # ESP Voice Robot Studio
 
+Groq keys are supported with Qwen text, Persian Whisper transcription and a local
+Persian Piper speech bridge. See the [Persian Groq setup guide](docs/groq-setup.fa.md)
+and [Groq validation report](docs/groq-validation.md).
+
 Qwen cloud is supported for text, voice samples, browser push-to-talk tests,
 device-scoped local knowledge, and physical robot conversations. Start with the
 [Persian Qwen setup guide](docs/qwen-setup.fa.md), [companion source](companion/README.md),

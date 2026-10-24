@@ -7,6 +7,7 @@ import {
 } from "@/lib/browser-voice";
 import { AppError } from "@/lib/server/errors";
 import { qwenVoiceTurn } from "@/lib/server/qwen-voice";
+import { groqVoiceTurn } from "@/lib/server/groq-voice";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,8 +16,8 @@ export async function POST(request: Request) {
     checkOrigin(request);
     const actor = await authenticateRequest(request);
     const body = await jsonBody(request, 660_000);
-    if (body.action === "qwen_turn") {
-      const result = await qwenVoiceTurn(actor, body, request.signal);
+    if (body.action === "qwen_turn" || body.action === "groq_turn") {
+      const result = await (body.action === "groq_turn" ? groqVoiceTurn : qwenVoiceTurn)(actor, body, request.signal);
       return reply({
         audio: result.audio.toString("base64"),
         transcript: result.transcript,

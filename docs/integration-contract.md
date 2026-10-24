@@ -1,5 +1,15 @@
 # Optional external voice server integration
 
+## Groq Persian speech
+
+With `AI_PROVIDER=groq`, the managed adapter detects bounded PCM16 16 kHz turns,
+transcribes Persian through Groq Whisper, calls the configured Qwen chat model
+with session-bound tools, and synthesizes through the authenticated local Piper
+bridge. It sends `AUDIO.COMMITTED` before inference, then paces 24 kHz PCM into
+the existing Opus packetizer. Playback acknowledgements, cancellation and source
+revocation use the same device contract. Partial or interrupted inference keeps
+session usage unconfirmed. See [Groq setup](groq-setup.fa.md).
+
 ## Qwen cloud
 
 Set `AI_PROVIDER=qwen` on the panel and this adapter, then configure

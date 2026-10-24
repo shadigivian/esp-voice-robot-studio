@@ -30,7 +30,7 @@ export class LocalKnowledgeProvider implements KnowledgeProvider {
     assert(
       storeId.startsWith("local-") && (!fileId || fileId.startsWith("local-")),
       "KNOWLEDGE_MIGRATION_REQUIRED",
-      "This knowledge index belongs to another provider. Migrate or reindex the device sources before using local Qwen knowledge.",
+      "This knowledge index belongs to another provider. Migrate or reindex the device sources before using local knowledge.",
       409,
     );
   }

@@ -3991,15 +3991,16 @@ function Playground({ device }: { device: Device }) {
                 </button>
               </div>
             </>
-          ) : data.integrations.provider === "qwen" ? (
+          ) : data.integrations.provider !== "openai" ? (
             <QwenVoicePlayground
               key={`${device.id}:${mode}`}
+              provider={data.integrations.provider}
               deviceId={device.id}
               mode={mode}
               ready={
                 !data.demo &&
                 isConfigured(data.integrations.ai) &&
-                !!data.integrations.model
+                data.integrations.voiceSamples
               }
               l={l}
               request={authenticatedFetch}
@@ -4036,7 +4037,11 @@ function Playground({ device }: { device: Device }) {
               </div>
               <div>
                 <span>{t("model")}</span>
-                <code dir="ltr">{data.integrations.model || t("setup")}</code>
+                <code dir="ltr">
+                  {data.integrations.model ||
+                    data.integrations.textModel ||
+                    t("setup")}
+                </code>
               </div>
             </div>
           </Panel>
@@ -4809,10 +4814,15 @@ function Integrations() {
       variable: "SUPABASE_URL · SUPABASE_ANON_KEY",
     },
     {
-      name: l("هوش مصنوعی OpenAI", "OpenAI provider"),
+      name: `${data.integrations.provider === "groq" ? "Groq" : data.integrations.provider === "qwen" ? "Qwen" : "OpenAI"} · ${l("هوش مصنوعی", "AI provider")}`,
       icon: Sparkles,
       configured: isConfigured(data.integrations.ai),
-      variable: "OPENAI_API_KEY · OPENAI_TEXT_MODEL · OPENAI_REALTIME_MODEL",
+      variable:
+        data.integrations.provider === "groq"
+          ? "GROQ_API_KEY · GROQ_TEXT_MODEL · GROQ_STT_MODEL"
+          : data.integrations.provider === "qwen"
+            ? "DASHSCOPE_API_KEY · DASHSCOPE_WORKSPACE_ID · QWEN_TEXT_MODEL · QWEN_REALTIME_MODEL"
+            : "OPENAI_API_KEY · OPENAI_TEXT_MODEL · OPENAI_REALTIME_MODEL",
     },
     {
       name: l("سرور صوتی موجود", "Existing voice server"),
@@ -4820,6 +4830,16 @@ function Integrations() {
       configured: isConfigured(data.integrations.voiceServer),
       variable: "VOICE_SERVER_URL",
     },
+    ...(data.integrations.provider === "groq"
+      ? [
+          {
+            name: l("صدای فارسی", "Persian speech"),
+            icon: AudioLines,
+            configured: data.integrations.voiceSamples,
+            variable: "GROQ_TTS_URL · SPEECH_BRIDGE_TOKEN · GROQ_TTS_VOICE",
+          },
+        ]
+      : []),
   ];
   return (
     <>
@@ -4892,7 +4912,11 @@ function Integrations() {
           <div className="config-summary">
             <div>
               <span>{t("model")}</span>
-              <code dir="ltr">{data.integrations.model || t("setup")}</code>
+              <code dir="ltr">
+                {data.integrations.model ||
+                  data.integrations.textModel ||
+                  t("setup")}
+              </code>
             </div>
             <div>
               <span>{t("endpoint")}</span>

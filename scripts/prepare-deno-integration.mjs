@@ -23,7 +23,7 @@ for (const [name, body] of compatibilityFiles) {
   await mkdir(dirname(resolve(output, name)), { recursive: true });
   await writeFile(resolve(output, name), body);
 }
-for (const name of ["core.mjs", "managed-voice.ts", ".env.example"])
+for (const name of ["core.mjs", "managed-voice.ts", "managed-groq.mjs", "groq-speech.mjs", ".env.example"])
   await copyFile(
     resolve(panel, "integration/deno", name),
     resolve(output, "management", name),

@@ -14,6 +14,8 @@ const env = {
   // Demo receives neither real provider keys nor a connection to production storage.
   OPENAI_API_KEY: "",
   DASHSCOPE_API_KEY: "",
+  GROQ_API_KEY: "",
+  SPEECH_BRIDGE_TOKEN: "",
   DATABASE_URL: "",
   MANAGEMENT_ADAPTER_SECRET: "",
   VOICE_SERVER_URL: "",

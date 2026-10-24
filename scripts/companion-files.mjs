@@ -91,7 +91,7 @@ export async function companionPlan(targetRoot, includeFirmware = false) {
     const original = await readFile(resolve(target, 'server/deno', path), 'utf8');
     await add(`server/deno/${path}`, null, Buffer.from(patchCompanionSource(path, original, compat)));
   }
-  for (const name of ['managed-voice.ts', 'core.mjs', '.env.example'])
+  for (const name of ['managed-voice.ts', 'core.mjs', 'managed-groq.mjs', 'groq-speech.mjs', '.env.example'])
     await add(`server/deno/management/${name}`, resolve(studioRoot, 'integration/deno', name));
   await add('server/deno/management/LICENSE', resolve(studioRoot, 'LICENSE'));
   if (includeFirmware) {

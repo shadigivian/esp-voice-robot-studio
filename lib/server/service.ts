@@ -31,6 +31,8 @@ import {
   providerReadiness,
   qwenConfig,
   qwenText,
+  groqConfig,
+  groqText,
 } from "./ai-provider";
 import {
   MemoryStore,
@@ -327,7 +329,7 @@ export class ControlService {
             ? "configured_not_tested"
             : "setup_required",
         textModel: ai.textModel,
-        browserVoice: ai.provider === "qwen" ? "push_to_talk" : "webrtc",
+        browserVoice: ai.provider === "openai" ? "webrtc" : "push_to_talk",
         voiceSamples: ai.voiceSamples,
         knowledge: this.demo
           ? "demo"
@@ -2236,8 +2238,9 @@ export class ControlService {
       let usage: Record<string, number> | null = null;
       if (this.demo)
         answer = `[Demo] ${facts.length ? facts.map((fact) => `${fact.key}: ${fact.value} ${fact.unit}`).join("؛ ") : retrieval.sources.length ? retrieval.sources.map((source) => source.excerpt).join("\n") : setup.config.role.unknownResponse}`;
-      else if (aiProvider() === "qwen") {
-        const result = await qwenText({
+      else if (aiProvider() !== "openai") {
+        const textTurn = aiProvider() === "groq" ? groqText : qwenText;
+        const result = await textTurn({
           instructions: setup.context.instructions,
           content: JSON.stringify({
             question: query,
@@ -2373,19 +2376,24 @@ export class ControlService {
       };
     const ai = providerReadiness();
     assert(
-      ai.configured && ai.realtimeModel && ai.textModel,
+      ai.configured &&
+        ai.textModel &&
+        (ai.provider === "groq" || ai.realtimeModel),
       "SETUP_REQUIRED",
       "Configure the selected provider key and models.",
       503,
     );
     const qwen = ai.provider === "qwen" ? qwenConfig() : null;
+    const groq = ai.provider === "groq" ? groqConfig() : null;
     const response = await fetch(
-      qwen
-        ? `${qwen.baseUrl}/models`
-        : `https://api.openai.com/v1/models/${encodeURIComponent(ai.realtimeModel)}`,
+      groq
+        ? `${groq.baseUrl}/models/${encodeURIComponent(groq.textModel)}`
+        : qwen
+          ? `${qwen.baseUrl}/models`
+          : `https://api.openai.com/v1/models/${encodeURIComponent(ai.realtimeModel!)}`,
       {
         headers: {
-          Authorization: `Bearer ${qwen?.key || process.env.OPENAI_API_KEY}`,
+          Authorization: `Bearer ${groq?.key || qwen?.key || process.env.OPENAI_API_KEY}`,
         },
         signal: AbortSignal.timeout(15000),
         redirect: "error",
@@ -2401,9 +2409,11 @@ export class ControlService {
           : "error",
         httpStatus: response.status,
         message: response.ok
-          ? qwen
-            ? "Qwen accepted the credentials for the configured endpoint. This does not verify realtime model or voice access; run a voice sample or robot session."
-            : "Model is visible to this API key. A live voice session has not been tested."
+          ? groq
+            ? "Groq accepted the credentials and the text model is visible. Speech recognition and the separate Persian speech bridge have not been tested."
+            : qwen
+              ? "Qwen accepted the credentials for the configured endpoint. This does not verify realtime model or voice access; run a voice sample or robot session."
+              : "Model is visible to this API key. A live voice session has not been tested."
           : "Model lookup failed; check key and model access.",
       },
     };
@@ -2630,7 +2640,7 @@ export function getService(): ControlService {
     : new PostgresStore(process.env.DATABASE_URL!);
   const provider = demo
     ? new DemoKnowledgeProvider()
-    : aiProvider() === "qwen"
+    : aiProvider() !== "openai"
       ? new LocalKnowledgeProvider()
       : process.env.OPENAI_API_KEY
         ? new OpenAIKnowledgeProvider(process.env.OPENAI_API_KEY)

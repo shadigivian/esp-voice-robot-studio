@@ -35,6 +35,10 @@ Login uses your existing email/password Auth account. Provision initial accounts
 
 ## Provider and knowledge
 
+For a Groq API key, use `AI_PROVIDER=groq` on both servers and follow the
+[Persian Groq guide](groq-setup.fa.md). This path combines Groq Whisper and Qwen
+text with a separately running local Piper speech bridge.
+
 For the Qwen cloud path, follow [the Persian Qwen guide](qwen-setup.fa.md).
 `AI_PROVIDER=qwen` selects DashScope text and realtime voice plus scoped local
 keyword retrieval; no OpenAI key is required in that mode. Set the same provider

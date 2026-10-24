@@ -5,12 +5,16 @@ import type { IncomingMessage } from 'node:http';
 import type { Duplex } from 'node:stream';
 import { WebSocket, WebSocketServer } from 'npm:ws';
 import { bindDevice, GenerationGate, ManagementClient, MANAGED_TOOLS, Pcm16Resampler, Pcm16Frames } from './core.mjs';
+import { connectManagedGroq } from './managed-groq.mjs';
+import { speechConfig, speechBridgeUrl } from './groq-speech.mjs';
 
 type Packetizer = { push(pcm: Uint8Array): void; flush(pad?: boolean): void; reset(): void; close(): void };
 type Options = {
   createOpusPacketizer(send: (packet: Uint8Array) => void): Packetizer;
   baseUrl?: string; adapterSecret?: string; apiKey?: string;
-  provider?: 'openai' | 'qwen'; providerUrl?: string; model?: string; voice?: string;
+  provider?: 'openai' | 'qwen' | 'groq'; providerUrl?: string; model?: string; voice?: string;
+  fetchProvider?: typeof fetch;
+  detectorOptions?: { threshold?: number; silenceMs?: number; maxMs?: number; minMs?: number };
   // Deterministic transport fixture; production leaves this unset.
   openProviderSocket?: (url: string, headers: Record<string, string>) => WebSocket;
 };
@@ -21,12 +25,17 @@ export function createManagedVoiceUpgrade(options: Options) {
   const adapterSecret = options.adapterSecret ?? Deno.env.get('MANAGEMENT_ADAPTER_SECRET');
   const provider = options.provider || Deno.env.get('AI_PROVIDER') || Deno.env.get('VOICE_PROVIDER') || 'openai';
   const qwen = provider === 'qwen';
-  const apiKey = options.apiKey ?? Deno.env.get(qwen ? 'DASHSCOPE_API_KEY' : 'OPENAI_API_KEY');
+  const groq = provider === 'groq';
+  const groqConfig = speechConfig((name: string) => Deno.env.get(name));
+  const apiKey = options.apiKey ?? Deno.env.get(groq ? 'GROQ_API_KEY' : qwen ? 'DASHSCOPE_API_KEY' : 'OPENAI_API_KEY');
+  if (groq) groqConfig.key = apiKey;
   const qwenModel = options.model || Deno.env.get('QWEN_REALTIME_MODEL') || 'qwen3.8-omni-flash-realtime';
   const qwenVoice = options.voice || Deno.env.get('QWEN_VOICE') || Deno.env.get('QWEN_REALTIME_VOICE');
   let providerUrl: string | undefined;
   try {
-    if (qwen) {
+    if (groq) {
+      if (groqConfig.ttsUrl && groqConfig.speechBridgeToken) providerUrl = speechBridgeUrl(groqConfig.ttsUrl);
+    } else if (qwen) {
       const workspace = Deno.env.get('DASHSCOPE_WORKSPACE_ID');
       const region = Deno.env.get('DASHSCOPE_REGION') || 'ap-southeast-1';
       if (!['ap-southeast-1', 'cn-beijing'].includes(region)) throw new Error('invalid_region');
@@ -50,6 +59,8 @@ export function createManagedVoiceUpgrade(options: Options) {
   catch { /* A bad optional management URL must not prevent legacy voice from starting. Managed route returns 503. */ }
 
   async function connect(ws: WebSocket, token: string, context: any, sessionId: string) {
+    if (groq) return connectManagedGroq({ ws, client: client!, token, context, sessionId, adapterSecret, config: groqConfig,
+      createOpusPacketizer: options.createOpusPacketizer, fetchImpl: options.fetchProvider, detectorOptions: options.detectorOptions });
     const bound = bindDevice(client!, token, context, sessionId);
     const gate = new GenerationGate();
     let upstream: WebSocket | undefined;

@@ -10,6 +10,7 @@ export default function QwenVoicePlayground({
   l,
   request,
   refresh,
+  provider = "qwen",
 }: {
   deviceId: string;
   mode: "draft" | "published";
@@ -17,6 +18,7 @@ export default function QwenVoicePlayground({
   l: (fa: string, en: string) => string;
   request: (url: string, init?: RequestInit) => Promise<Response>;
   refresh: () => Promise<void>;
+  provider?: "qwen" | "groq";
 }) {
   const [phase, setPhase] = useState("idle");
   const [error, setError] = useState("");
@@ -110,7 +112,7 @@ export default function QwenVoicePlayground({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          action: "qwen_turn",
+          action: provider === "groq" ? "groq_turn" : "qwen_turn",
           deviceId,
           preview: mode,
           audio: btoa(binary),
@@ -221,7 +223,7 @@ export default function QwenVoicePlayground({
       <span className={`voice-orb ${phase === "recording" ? "connected" : ""}`}>
         <Mic size={35} />
       </span>
-      <h3>{l("آزمایش صوتی Qwen", "Qwen voice test")}</h3>
+      <h3>{l(`آزمایش صوتی ${provider === "groq" ? "Groq" : "Qwen"}`, `${provider === "groq" ? "Groq" : "Qwen"} voice test`)}</h3>
       <p>
         {l(
           "برای ضبط کلیک کنید و پس از صحبت، ارسال را بزنید. ضبط حداکثر ۱۵ ثانیه است و پاسخ بعد از پردازش پخش می‌شود. هر ضبط یک جلسهٔ تازه است. این آزمایش ممکن است مصرف API داشته باشد.",
@@ -231,8 +233,8 @@ export default function QwenVoicePlayground({
       {!ready && (
         <p>
           {l(
-            "کلید و مدل Qwen را روی سرور تنظیم کنید.",
-            "Configure the Qwen key and model on the server.",
+            "کلید، مدل و سرویس گفتار را روی سرور تنظیم کنید.",
+            "Configure the provider key, model and speech service on the server.",
           )}
         </p>
       )}
@@ -282,7 +284,7 @@ export default function QwenVoicePlayground({
         src={url || undefined}
         controls={!!url}
         autoPlay
-        aria-label={l("پاسخ صوتی Qwen", "Qwen audio response")}
+        aria-label={l("پاسخ صوتی دستیار", "Assistant audio response")}
       />
       {transcript && <p>{transcript}</p>}
     </div>

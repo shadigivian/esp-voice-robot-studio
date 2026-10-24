@@ -1,13 +1,15 @@
 import { AppError, assert } from "./errors";
+import { groqConfig } from "./groq-provider";
+export { groqConfig, groqText, groqTranscribe } from "./groq-provider";
 
-export type AIProvider = "openai" | "qwen";
+export type AIProvider = "openai" | "qwen" | "groq";
 export function aiProvider(): AIProvider {
   const value =
     process.env.AI_PROVIDER || process.env.VOICE_PROVIDER || "openai";
   assert(
-    value === "openai" || value === "qwen",
+    value === "openai" || value === "qwen" || value === "groq",
     "SETUP_REQUIRED",
-    "AI_PROVIDER must be openai or qwen.",
+    "AI_PROVIDER must be openai, qwen or groq.",
     503,
   );
   return value;
@@ -96,6 +98,17 @@ export function qwenVoice(savedVoice?: string) {
 }
 export function providerReadiness() {
   const provider = aiProvider();
+  if (provider === "groq") {
+    const groq = groqConfig();
+    return {
+      provider,
+      configured: !!groq.key,
+      textModel: groq.textModel,
+      realtimeModel: null,
+      browserVoice: false,
+      voiceSamples: !!(groq.key && groq.ttsUrl && groq.speechBridgeToken),
+    };
+  }
   const qwen = provider === "qwen" ? qwenConfig() : null;
   const key =
     qwen?.key ||

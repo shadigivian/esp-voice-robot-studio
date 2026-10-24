@@ -4,6 +4,7 @@ import { AppError } from "@/lib/server/errors";
 import { checkOrigin, failure, jsonBody } from "@/lib/http";
 import { aiProvider } from "@/lib/server/ai-provider";
 import { qwenVoiceTurn } from "@/lib/server/qwen-voice";
+import { groqVoiceTurn } from "@/lib/server/groq-voice";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,9 +20,9 @@ export async function POST(request: Request) {
         "Voice samples do not make paid calls in demo mode.",
         409,
       );
-    if (aiProvider() === "qwen") {
+    if (aiProvider() === "qwen" || aiProvider() === "groq") {
       const body = await jsonBody(request, 4096);
-      const result = await qwenVoiceTurn(actor, body, request.signal, true);
+      const result = await (aiProvider() === "groq" ? groqVoiceTurn : qwenVoiceTurn)(actor, body, request.signal, true);
       return new Response(new Uint8Array(result.audio), {
         headers: {
           "Content-Type": "audio/wav",

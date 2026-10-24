@@ -44,7 +44,8 @@ test('companion plan validates the existing server before preparing bounded sour
     assert.deepEqual(entries.map((entry) => entry.path), [
       'server/deno/main.ts', 'server/deno/types.d.ts', 'server/deno/deno.json',
       'server/deno/models/gemini.ts', 'server/deno/models/elevenlabs.ts', 'server/deno/management/managed-voice.ts',
-      'server/deno/management/core.mjs', 'server/deno/management/.env.example',
+      'server/deno/management/core.mjs', 'server/deno/management/managed-groq.mjs',
+      'server/deno/management/groq-speech.mjs', 'server/deno/management/.env.example',
       'server/deno/management/LICENSE',
     ]);
     assert.ok(entries.every((entry) => Buffer.isBuffer(entry.data)));

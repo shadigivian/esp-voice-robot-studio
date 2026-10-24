@@ -7,5 +7,7 @@ coverage/
 test-results/
 playwright-report/
 .local/
+__pycache__/
+*.py[cod]
 .pio/
 integration/prepared/
