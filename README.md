@@ -1,5 +1,10 @@
 # ESP Voice Robot Studio
 
+Qwen cloud is supported for text, voice samples, browser push-to-talk tests,
+device-scoped local knowledge, and physical robot conversations. Start with the
+[Persian Qwen setup guide](docs/qwen-setup.fa.md), [companion source](companion/README.md),
+and [validation report](docs/qwen-validation.md). API keys stay on the server.
+
 [![Checks](https://github.com/shadigivian/esp-voice-robot-studio/actions/workflows/ci.yml/badge.svg)](https://github.com/shadigivian/esp-voice-robot-studio/actions/workflows/ci.yml)
 
 A management dashboard for independent ESP voice robots, with Persian RTL and English LTR interfaces. Manage robot identities, character and voice settings, private knowledge, conversations and access from one workspace.
@@ -72,7 +77,7 @@ Default tests do not make paid model requests or operate hardware. See the [test
 - [Hardware profile example](hardware-profile.example.json)
 - [Historical companion firmware verification](docs/firmware-verification.md)
 
-This standalone repository contains the management app, simulator and optional adapter. The full ElatoAI firmware and voice server are separate projects and are not bundled. Hardware wiring, OLED rendering, secure board provisioning, deployed certificates and real microphone/speaker behavior require separate validation. Live provider access and native Deno deployment were not established by the local demo or deterministic tests. The application currently uses a small-installation transaction model; review the architecture before operating a large fleet.
+This repository contains the management app, simulator, managed adapter, and companion Arduino firmware source for the documented ESP32-S3 circuit. The full ElatoAI voice server remains separate; the companion installer integrates its existing listener. Hardware wiring, OLED rendering, secure board provisioning, deployed certificates and real microphone/speaker behavior require separate validation. Live provider access and native Deno deployment are not established by the local demo or deterministic tests. The application uses a small-installation transaction model; review the architecture before operating a large fleet.
 
 ## License and attribution
 

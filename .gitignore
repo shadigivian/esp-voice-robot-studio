@@ -7,4 +7,5 @@ coverage/
 test-results/
 playwright-report/
 .local/
+.pio/
 integration/prepared/

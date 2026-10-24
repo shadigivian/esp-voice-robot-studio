@@ -6,6 +6,7 @@ import {
   stopBrowserVoice,
 } from "@/lib/browser-voice";
 import { AppError } from "@/lib/server/errors";
+import { qwenVoiceTurn } from "@/lib/server/qwen-voice";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,7 +14,15 @@ export async function POST(request: Request) {
   try {
     checkOrigin(request);
     const actor = await authenticateRequest(request);
-    const body = await jsonBody(request, 110_000);
+    const body = await jsonBody(request, 660_000);
+    if (body.action === "qwen_turn") {
+      const result = await qwenVoiceTurn(actor, body, request.signal);
+      return reply({
+        audio: result.audio.toString("base64"),
+        transcript: result.transcript,
+        sessionId: result.sessionId,
+      });
+    }
     if (body.action === "interrupt" && typeof body.sessionId === "string")
       return reply(await stopBrowserVoice(actor, body.sessionId));
     return reply(await startBrowserVoice(actor, body, request.signal));

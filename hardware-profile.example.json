@@ -1,30 +1,31 @@
 {
-  "profile": "unverified-existing-esp32-s3",
+  "profile": "qwen-user-wiring-esp32-s3",
   "hardwareVerification": "required-before-deployment",
   "board": "esp32-s3-devkitc-1",
   "macIdentity": "Wi-Fi station MAC from WiFi.macAddress()",
   "audio": {
-    "microphone": { "encoding": "pcm_s16le", "channels": 1, "sampleRate": 16000 },
+    "microphone": { "encoding": "pcm_s16le", "channels": 1, "sampleRate": 16000, "sckPin": 1, "wsPin": 4, "sdPin": 14, "lr": "GND (left)", "physicalSlotBits": 32 },
     "serverToDevice": { "encoding": "opus", "channels": 1, "encodedSampleRate": 24000, "frameDurationMs": 120 },
-    "speakerI2s": { "sampleRate": 48000, "note": "Existing firmware output rate; verify the decoder path on hardware." }
+    "speakerI2s": { "sampleRate": 48000, "bclkPin": 6, "lrcPin": 5, "dinPin": 7, "sdPin": null, "sdConnection": "VIN (5V), always enabled", "gainConnection": "GND", "note": "MAX98357A uses 48kHz I2S; PCM24kHz from Qwen is encoded to Opus on the server and decoded at 48kHz on the ESP." }
   },
   "display": {
     "controller": null,
     "width": null,
     "height": null,
     "i2cAddress": null,
-    "sdaPin": null,
-    "sclPin": null,
+    "sdaPin": 8,
+    "sclPin": 9,
     "status": "setup_required",
-    "pairingCodeRenderer": "ManagementProtocol::Hooks::displayCode"
+    "pairingCodeRenderer": "ManagementProtocol::Hooks::displayCode; explicit local USB pairing_code command available until the OLED is identified"
   },
+  "touch": { "module": "TTP223", "outPin": 2, "voltage": "3V3", "activeLevel": "HIGH", "mode": "digital momentary" },
   "identity": {
     "bootstrap": "unique operator-provisioned 32+ character random secret per device",
     "storage": "NVS namespace robot-mgmt; enable NVS encryption/secure boot for deployment",
     "sharedFleetSecretAllowed": false
   },
-  "capabilities": ["pcm16_input", "opus_output", "playback_ack"],
-  "optionalManagementFeature": "ELATO_MANAGEMENT",
+  "capabilities": ["pcm16_input", "opus_output", "playback_ack", "pairing_usb"],
+  "managementFeature": "ELATO_MANAGEMENT enabled; endpoint /managed-voice uses scoped device tokens",
   "batteryTelemetry": "unavailable",
   "acousticEchoCancellation": "unavailable"
 }

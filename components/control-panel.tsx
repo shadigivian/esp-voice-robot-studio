@@ -60,6 +60,7 @@ import {
 } from "lucide-react";
 import { translations, type Locale, type TranslationKey } from "../lib/i18n";
 import DeviceSettingsView from "./device-settings";
+import QwenVoicePlayground from "./qwen-voice-playground";
 
 import type {
   Bootstrap,
@@ -1363,7 +1364,7 @@ function Dashboard() {
                 },
                 {
                   label: l("هوش مصنوعی", "AI provider"),
-                  ok: isConfigured(data.integrations.openai),
+                  ok: isConfigured(data.integrations.ai),
                 },
                 {
                   label: l("سرور صوتی", "Voice server"),
@@ -2602,7 +2603,12 @@ function VoiceSample({ deviceId }: { deviceId: string }) {
       <button
         className="button secondary"
         type="button"
-        disabled={busy || data.demo || !isConfigured(data.integrations.openai)}
+        disabled={
+          busy ||
+          data.demo ||
+          !isConfigured(data.integrations.ai) ||
+          !data.integrations.voiceSamples
+        }
         onClick={() => void sample()}
       >
         {busy ? (
@@ -3754,16 +3760,15 @@ type ChatMessage = {
   demo?: boolean;
 };
 function Playground({ device }: { device: Device }) {
-  const { data, t, l, run, busy } = useApp();
+  const { data, t, l, run, busy, refresh } = useApp();
   const [mode, setMode] = useState<"draft" | "published">("draft");
   const [tab, setTab] = useState("text");
   const [query, setQuery] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const end = useRef<HTMLDivElement>(null);
-  useEffect(
-    () => end.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }),
-    [messages, busy],
-  );
+  useEffect(() => {
+    end.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [messages, busy]);
   async function send(event: FormEvent) {
     event.preventDefault();
     const question = query.trim();
@@ -3986,6 +3991,20 @@ function Playground({ device }: { device: Device }) {
                 </button>
               </div>
             </>
+          ) : data.integrations.provider === "qwen" ? (
+            <QwenVoicePlayground
+              key={`${device.id}:${mode}`}
+              deviceId={device.id}
+              mode={mode}
+              ready={
+                !data.demo &&
+                isConfigured(data.integrations.ai) &&
+                !!data.integrations.model
+              }
+              l={l}
+              request={authenticatedFetch}
+              refresh={refresh}
+            />
           ) : (
             <VoicePlayground device={device} mode={mode} />
           )}
@@ -4030,7 +4049,7 @@ function Playground({ device }: { device: Device }) {
                 "This is a test session. It does not mark the physical device online or change published settings.",
               )}
             </p>
-            {!data.demo && !isConfigured(data.integrations.openai) && (
+            {!data.demo && !isConfigured(data.integrations.ai) && (
               <Link className="text-link" href="/settings/integrations">
                 {t("setup")}
                 <ChevronLeft className="direction-arrow" size={14} />
@@ -4068,7 +4087,7 @@ function VoicePlayground({
   const request = useRef<AbortController | null>(null);
   const ready =
     !data.demo &&
-    data.integrations.openai === "configured_not_tested" &&
+    data.integrations.ai === "configured_not_tested" &&
     !!data.integrations.model;
   const active = phase !== "idle" && phase !== "error";
   const cleanup = useCallback((sendEnd = true) => {
@@ -4792,7 +4811,7 @@ function Integrations() {
     {
       name: l("هوش مصنوعی OpenAI", "OpenAI provider"),
       icon: Sparkles,
-      configured: isConfigured(data.integrations.openai),
+      configured: isConfigured(data.integrations.ai),
       variable: "OPENAI_API_KEY · OPENAI_TEXT_MODEL · OPENAI_REALTIME_MODEL",
     },
     {

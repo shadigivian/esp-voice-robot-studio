@@ -1,5 +1,7 @@
 # Architecture
 
+With AI_PROVIDER=qwen, the panel uses DashScope Chat Completions, bounded server-owned browser voice turns, and local keyword retrieval over approved device revisions. The Deno adapter owns the physical realtime session and scoped tools. Companion firmware supplies the documented ESP32-S3 transport and explicit USB pairing. Existing OpenAI paths remain available when selected; OpenAI-specific details below apply to that provider.
+
 The management application is a separate Next.js/TypeScript application under `firmware-arduino/management-panel`. It preserves the existing sibling frontend, Supabase migrations and voice services. The optional Deno integration adds an authenticated managed-device path to the existing voice server; it does not replace the original audio transport.
 
 ## Runtime boundaries

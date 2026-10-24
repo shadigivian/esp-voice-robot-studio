@@ -1,5 +1,7 @@
 # Private device knowledge
 
+With AI_PROVIDER=qwen, approved reviewed text remains in the durable application database. Local keyword search applies the same workspace/device, revision, session and revocation filters; no OpenAI vector store or key is required for a new Qwen installation. This is keyword retrieval, not semantic search. Foreign-provider store/file identifiers require explicit migration and are not silently acknowledged as cleaned up. The provider-specific OpenAI indexing details below apply to OpenAI mode.
+
 Each physical device owns its documents, facts, published source selection and private provider-store mapping. A shared character template does not share any of these resources. The server derives workspace/device identity from verified membership or a valid device credential; model tool parameters cannot select a tenant, file ID or vector store.
 
 ## Processing and publication

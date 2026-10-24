@@ -1,0 +1,37 @@
+[
+  {
+    "path": "types.d.ts",
+    "before": "import { SupabaseClient } from \"@supabase/supabase-js\";",
+    "after": "import { SupabaseClient } from \"@supabase/supabase-js\";\nimport type { WebSocket as NodeWebSocket } from \"npm:@types/ws\";"
+  },
+  {
+    "path": "types.d.ts",
+    "before": "type ModelProvider = \"openai\" | \"gemini\" | \"elevenlabs\" | \"hume\" | \"grok\" | \"boson\";",
+    "after": "type ModelProvider = \"openai\" | \"openai-live\" | \"gemini\" | \"elevenlabs\" | \"hume\" | \"grok\" | \"boson\";"
+  },
+  {
+    "path": "types.d.ts",
+    "before": "    interface IPersonality {",
+    "after": "    interface IPersonality {\n        voice?: { config?: { config_id?: string } };"
+  },
+  {
+    "path": "types.d.ts",
+    "before": "        ws: WebSocket;",
+    "after": "        ws: NodeWebSocket;"
+  },
+  {
+    "path": "deno.json",
+    "before": "  \"compilerOptions\": {",
+    "after": "  \"compilerOptions\": {\n    \"types\": [\"./types.d.ts\"],"
+  },
+  {
+    "path": "models/gemini.ts",
+    "before": "            const message = await waitMessage();",
+    "after": "            const message = await waitMessage();\n            if (!message) continue;"
+  },
+  {
+    "path": "models/elevenlabs.ts",
+    "before": "onMessage(async (event: IncomingSocketEvent) => {",
+    "after": "onMessage(async (event: IncomingSocketEvent | { type: \"conversation_end\" }) => {"
+  }
+]

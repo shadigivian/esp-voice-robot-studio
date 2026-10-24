@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ManagementClient, parseToolArgs, bindDevice, GenerationGate, Pcm16Resampler } from './core.mjs';
+import { ManagementClient, parseToolArgs, bindDevice, GenerationGate, Pcm16Resampler, Pcm16Frames } from './core.mjs';
 
 test('management credentials never follow redirects or non-TLS remote endpoints', async () => {
   assert.throws(() => new ManagementClient({ baseUrl: 'http://example.com', allowLocalHttp: true }));
@@ -61,4 +61,11 @@ test('streaming 16k to 24k PCM conversion is independent of websocket chunk boun
   for (let i = 0; i < input.length; i += 53) chunks.push(streamed.push(input.subarray(i, i + 53)));
   assert.deepEqual(Buffer.concat(chunks), Buffer.from(whole));
   assert.ok(whole.length >= 4794 && whole.length <= 4800);
+});
+
+test('PCM framing preserves exact audio samples across odd and empty chunks without resampling', () => {
+  const frames = new Pcm16Frames();
+  const chunks = [frames.push(Uint8Array.of(1)), frames.push(new Uint8Array()),
+    frames.push(Uint8Array.of(2, 3, 4, 5)), frames.push(Uint8Array.of(6))];
+  assert.deepEqual(Buffer.concat(chunks), Buffer.from([1, 2, 3, 4, 5, 6]));
 });

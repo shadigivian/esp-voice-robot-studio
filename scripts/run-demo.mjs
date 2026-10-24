@@ -13,6 +13,7 @@ const env = {
   DEMO_SESSION_SECRET: randomBytes(48).toString("base64url"),
   // Demo receives neither real provider keys nor a connection to production storage.
   OPENAI_API_KEY: "",
+  DASHSCOPE_API_KEY: "",
   DATABASE_URL: "",
   MANAGEMENT_ADAPTER_SECRET: "",
   VOICE_SERVER_URL: "",

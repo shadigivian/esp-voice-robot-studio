@@ -23,6 +23,90 @@ export interface KnowledgeProvider {
   ): Promise<(Source & { fileId?: string })[]>;
   remove(storeId: string, fileId: string): Promise<void>;
 }
+/** Content remains in the application's durable document revisions. No files or
+ * private excerpts are uploaded to a separate search provider in this mode. */
+export class LocalKnowledgeProvider implements KnowledgeProvider {
+  private validate(storeId: string, fileId?: string) {
+    assert(
+      storeId.startsWith("local-") && (!fileId || fileId.startsWith("local-")),
+      "KNOWLEDGE_MIGRATION_REQUIRED",
+      "This knowledge index belongs to another provider. Migrate or reindex the device sources before using local Qwen knowledge.",
+      409,
+    );
+  }
+  async createStore(deviceId: string) {
+    return `local-${deviceId}`;
+  }
+  async index(
+    store: string,
+    _text: string,
+    meta: { documentId: string; revision: number },
+  ) {
+    this.validate(store);
+    return `local-${meta.documentId}-${meta.revision}`;
+  }
+  async status(store: string, file: string) {
+    this.validate(store, file);
+    return "ready" as const;
+  }
+  async search(store: string): Promise<Source[]> {
+    this.validate(store);
+    return [];
+  }
+  async remove(store: string, file: string) {
+    this.validate(store, file);
+  }
+}
+export function localKnowledgeSearch(
+  documents: {
+    id: string;
+    title: string;
+    readyText?: string;
+    activeText?: string;
+    readyRevision?: number;
+    activeRevision?: number;
+  }[],
+  query: string,
+  preview: boolean,
+): Source[] {
+  const normalize = (value: string) =>
+    value
+      .toLocaleLowerCase()
+      .replace(/ي/g, "ی")
+      .replace(/ك/g, "ک")
+      .replace(/[\u200c\u200d]/g, " ");
+  const terms = [
+    ...new Set(
+      normalize(query)
+        .split(/[^\p{L}\p{N}]+/u)
+        .filter((term) => term.length > 1),
+    ),
+  ];
+  return documents
+    .map((doc) => {
+      const text = (preview ? doc.readyText : doc.activeText) || "";
+      const normalized = normalize(`${doc.title} ${text}`);
+      const score = terms.filter((term) => normalized.includes(term)).length;
+      const match =
+        terms
+          .map((term) => normalize(text).indexOf(term))
+          .filter((index) => index >= 0)
+          .sort((a, b) => a - b)[0] || 0;
+      return {
+        sourceId: doc.id,
+        revision: (preview ? doc.readyRevision : doc.activeRevision)!,
+        title: doc.title,
+        excerpt: text.slice(
+          Math.max(0, match - 250),
+          Math.max(0, match - 250) + 1500,
+        ),
+        score,
+      };
+    })
+    .filter((source) => source.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 12);
+}
 /** API origin is fixed. No browser supplied URL, store or file identifier is used. */
 export class OpenAIKnowledgeProvider implements KnowledgeProvider {
   constructor(private key: string) {
